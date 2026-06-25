@@ -1,0 +1,85 @@
+@startuml
+' https://plantuml.com/deployment-diagram
+'
+' Spring modules dependency overview (inferred common relationships)
+' Update/verify against each module's Gradle file for exact dependencies.
+'
+'skinparam componentStyle rectangle
+'从上到下
+left to right direction
+
+' Low-level/common modules
+component "spring-jcl" as jcl
+component "spring-core" as core
+component "spring-expression" as expr
+
+' Core building blocks
+component "spring-beans" as beans
+component "spring-context" as context
+component "spring-context-indexer" as context_indexer
+component "spring-context-support" as context_support
+
+' AOP / Aspects
+component "spring-aop" as aop
+component "spring-aspects" as aspects
+
+' Data access
+component "spring-jdbc" as jdbc
+component "spring-orm" as orm
+component "spring-oxm" as oxm
+component "spring-r2dbc" as r2dbc
+
+' Transactions & Testing
+component "spring-tx" as tx
+component "spring-test" as test
+
+' Messaging / Integration
+component "spring-messaging" as messaging
+component "spring-jms" as jms
+
+' Web
+component "spring-web" as web
+component "spring-webmvc" as webmvc
+component "spring-webflux" as webflux
+component "spring-websocket" as websocket
+
+' Misc
+component "spring-instrument" as instrument
+
+' Dependency arrows (typical relationships)
+jcl -down-> core : provides logging facade
+expr -down-> core
+beans -down-> core
+context -down-> beans
+context -down-> core
+context_indexer -down-> context
+context_support -down-> context
+
+aop -down-> beans
+aop -down-> core
+aspects -down-> aop
+
+jdbc -down-> beans
+jdbc -down-> core
+orm -down-> jdbc
+orm -down-> tx
+oxm -down-> core
+r2dbc -down-> core
+
+tx -down-> beans
+tx -down-> core
+test -down-> context
+test -down-> core
+
+messaging -down-> core
+jms -down-> messaging
+
+web -down-> context
+web -down-> core
+webmvc -down-> web
+webflux -down-> web
+websocket -down-> web
+
+instrument -down-> core
+
+@enduml
