@@ -1,0 +1,9 @@
+description = "spring-wttch - personal module for experimenting with Spring sources and writing tests"
+
+// Keep this module simple: depend on core Spring modules so you can write tests against the framework
+
+dependencies {
+	implementation project(":spring-context")
+	testImplementation project(":spring-test")
+}
+
