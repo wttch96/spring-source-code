@@ -1,0 +1,17 @@
+@startuml
+
+
+top to bottom direction
+skinparam linetype ortho
+
+interface Log << interface >> [[src/main/java/org/apache/commons/logging/Log.java]]
+class LogAdapter
+class LogFactory
+class LogFactoryService
+class NoOpLog
+class SimpleLog
+
+LogFactoryService  -[#000082,plain]-^  LogFactory
+NoOpLog            -[#008200,dashed]-^  Log
+SimpleLog          -[#000082,plain]-^  NoOpLog
+@enduml
