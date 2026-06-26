@@ -47,39 +47,17 @@ component "spring-websocket" as websocket
 component "spring-instrument" as instrument
 
 ' Dependency arrows (typical relationships)
-jcl -down-> core : provides logging facade
-expr -down-> core
-beans -down-> core
-context -down-> beans
-context -down-> core
-context_indexer -down-> context
-context_support -down-> context
+jcl --> core
+core --> beans
 
-aop -down-> beans
-aop -down-> core
-aspects -down-> aop
+core --> expr
 
-jdbc -down-> beans
-jdbc -down-> core
-orm -down-> jdbc
-orm -down-> tx
-oxm -down-> core
-r2dbc -down-> core
+beans --> aop
+core --> aop
 
-tx -down-> beans
-tx -down-> core
-test -down-> context
-test -down-> core
-
-messaging -down-> core
-jms -down-> messaging
-
-web -down-> context
-web -down-> core
-webmvc -down-> web
-webflux -down-> web
-websocket -down-> web
-
-instrument -down-> core
+aop --> context
+beans --> context
+core --> context
+expr --> context
 
 @enduml

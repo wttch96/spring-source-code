@@ -1,0 +1,69 @@
+@startuml
+' https://plantuml.com/sequence-diagram
+
+title AnnotationConfigApplicationContext 调用逻辑图
+autonumber
+
+actor Client
+participant "AnnotationConfigApplicationContext" as ACC
+participant "AnnotatedBeanDefinitionReader" as Reader
+participant "ClassPathBeanDefinitionScanner" as Scanner
+participant "AnnotationConfigUtils" as Utils
+participant "BeanDefinitionRegistry" as Registry
+
+== 方式一：通过配置类初始化 ==
+
+Client -> ACC: new AnnotationConfigApplicationContext(AppConfig.class)
+activate ACC
+ACC -> ACC: this()
+ACC -> Reader: new AnnotatedBeanDefinitionReader(this)
+activate Reader
+Reader -> Utils: registerAnnotationConfigProcessors(registry)
+Utils -> Registry: register infrastructure beans
+deactivate Reader
+ACC -> Scanner: new ClassPathBeanDefinitionScanner(this)
+ACC -> ACC: register(componentClasses)
+ACC -> Reader: register(componentClasses)
+Reader -> Reader: registerBean(componentClass)
+Reader -> Reader: doRegisterBean(...)
+Reader -> Registry: registerBeanDefinition(...)
+ACC -> ACC: refresh()
+deactivate ACC
+
+== 方式二：通过包扫描初始化 ==
+
+Client -> ACC: new AnnotationConfigApplicationContext("com.example")
+activate ACC
+ACC -> ACC: this()
+ACC -> Reader: new AnnotatedBeanDefinitionReader(this)
+ACC -> Scanner: new ClassPathBeanDefinitionScanner(this)
+ACC -> ACC: scan(basePackages)
+ACC -> Scanner: scan(basePackages)
+Scanner -> Scanner: doScan(basePackages)
+Scanner -> Registry: registerBeanDefinition(...)
+opt includeAnnotationConfig == true
+  Scanner -> Utils: registerAnnotationConfigProcessors(registry)
+  Utils -> Registry: register infrastructure beans
+end
+ACC -> ACC: refresh()
+deactivate ACC
+
+== 方式三：无参构造后手动注册 ==
+
+Client -> ACC: new AnnotationConfigApplicationContext()
+activate ACC
+ACC -> Reader: new AnnotatedBeanDefinitionReader(this)
+ACC -> Scanner: new ClassPathBeanDefinitionScanner(this)
+Client -> ACC: register(...)
+ACC -> Reader: register(...)
+Client -> ACC: refresh()
+deactivate ACC
+
+note over ACC
+核心职责：
+1. 初始化 Reader / Scanner
+2. 注册注解处理器
+3. 支持 register(...) / scan(...)
+4. 通过 refresh() 完成容器启动
+end note
+@enduml
