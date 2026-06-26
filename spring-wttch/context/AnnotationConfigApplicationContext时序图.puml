@@ -1,0 +1,56 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+autonumber
+
+actor Client
+participant AnnotationConfigApplicationContext as ACC
+participant StartupStep as Step
+participant AnnotatedBeanDefinitionReader as Reader
+participant ClassPathBeanDefinitionScanner as Scanner
+
+
+participant ConditionEvaluator as CE
+participant AnnotationConfigUtils as Utils
+
+'MARK: 无参构造
+== 无参构造 ==
+Client -> ACC: new AnnotationConfigApplicationContext()
+activate ACC
+ACC -> Step: start("spring.context.refresh")
+activate ACC #DarkSalmon
+
+ACC -> Reader: new AnnotatedBeanDefinitionReader(this)
+activate Reader
+Reader --> Reader: getOrCreateEnvironment(registry)
+Reader --> Reader: this(registry, environment)
+Reader --> CE: new ConditionEvaluator(registry, environment, null)
+Reader --> Utils: registerAnnotationConfigProcessors(registry)
+Utils --> Utils: registerAnnotationConfigProcessors((registry, null)
+deactivate Reader
+
+ACC -> Step: end()
+deactivate ACC
+ACC -> Scanner: new ClassPathBeanDefinitionScanner(this)
+deactivate ACC
+
+ACC -> ACC: refresh()
+
+autonumber 1
+== init(DefaultListableBeanFactory) ==
+Client -> ACC: new AnnotationConfigApplicationContext(beanFactory)
+activate ACC
+
+deactivate ACC
+
+autonumber 1
+== init(Class<?> ...) ==
+Client -> ACC: new AnnotationConfigApplicationContext(...)
+activate ACC
+ACC -> ACC: this()
+Client -> ACC: register(...)
+ACC -> Reader: register(...)
+ACC -> ACC: refresh()
+
+
+@enduml

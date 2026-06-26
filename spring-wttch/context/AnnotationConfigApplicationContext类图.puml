@@ -1,0 +1,46 @@
+@startuml
+'https://plantuml.com/class-diagram
+!include ../uml-wttch.puml
+
+skinparam linetype ortho
+
+class DefaultResourceLoader
+class AbstractApplicationContext << abstract >>
+
+AbstractApplicationContext $extend DefaultResourceLoader
+
+class GenericApplicationContext
+interface AnnotationConfigRegistry << interface >>
+interface AliasRegistry << interface >>
+interface BeanDefinitionRegistry << interface >>
+
+BeanDefinitionRegistry $iExtend AliasRegistry
+GenericApplicationContext $extend AbstractApplicationContext
+GenericApplicationContext $implement BeanDefinitionRegistry
+
+class AnnotationConfigApplicationContext
+
+AnnotationConfigApplicationContext $extend GenericApplicationContext
+AnnotationConfigApplicationContext $implement AnnotationConfigRegistry
+
+class Reader as "AnnotatedBeanDefinitionReader"
+class ClassPathBeanDefinitionScanner
+
+AnnotationConfigApplicationContext o-- Reader
+AnnotationConfigApplicationContext o-- ClassPathBeanDefinitionScanner
+
+
+interface BeanDefinitionRegistry
+interface BeanNameGenerator
+interface ScopeMetadataResolver
+class ConditionEvaluator
+
+
+Reader o-- BeanDefinitionRegistry
+Reader o-- BeanNameGenerator
+Reader o-- ScopeMetadataResolver
+Reader o-- ConditionEvaluator
+
+
+
+@enduml
