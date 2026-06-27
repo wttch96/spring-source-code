@@ -2,45 +2,53 @@
 'https://plantuml.com/class-diagram
 !include ../uml-wttch.puml
 
+top to bottom direction
+
 skinparam linetype ortho
 
+
+'资源加载能力来自 DefaultResourceLoader，ApplicationContext 基础能力来自 AbstractApplicationContext
 class DefaultResourceLoader
 class AbstractApplicationContext << abstract >>
 
 AbstractApplicationContext $extend DefaultResourceLoader
 
-class GenericApplicationContext
+'GenericApplicationContext 是可编程注册 BeanDefinition 的通用 ApplicationContext
+class GenericApplicationContext as "GenericApplicationContext" << abstract >> {
+  +registerBeanDefinition(String beanName, BeanDefinition beanDefinition)
+  +getDefaultListableBeanFactory(): DefaultListableBeanFactory
+}
 interface AnnotationConfigRegistry << interface >>
 interface AliasRegistry << interface >>
 interface BeanDefinitionRegistry << interface >>
 
+'BeanDefinitionRegistry 继承别名注册能力，并由 GenericApplicationContext 实现
 BeanDefinitionRegistry $iExtend AliasRegistry
 GenericApplicationContext $extend AbstractApplicationContext
 GenericApplicationContext $implement BeanDefinitionRegistry
 
-class AnnotationConfigApplicationContext
+class AnnotationConfigApplicationContext {
+    - reader: AnnotatedBeanDefinitionReader
+    - scanner: ClassPathBeanDefinitionScanner
+}
+class AnnotatedBeanDefinitionReader
+class ClassPathBeanDefinitionScanner
 
+'AnnotationConfigApplicationContext 在通用上下文之上增加注解配置注册能力
 AnnotationConfigApplicationContext $extend GenericApplicationContext
 AnnotationConfigApplicationContext $implement AnnotationConfigRegistry
 
-class Reader as "AnnotatedBeanDefinitionReader"
-class ClassPathBeanDefinitionScanner
-
-AnnotationConfigApplicationContext o-- Reader
-AnnotationConfigApplicationContext o-- ClassPathBeanDefinitionScanner
 
 
-interface BeanDefinitionRegistry
-interface BeanNameGenerator
-interface ScopeMetadataResolver
-class ConditionEvaluator
+'reader 负责注册显式传入的配置类，scanner 负责扫描包路径下的组件
+AnnotationConfigApplicationContext::reader o-right- AnnotatedBeanDefinitionReader
+AnnotationConfigApplicationContext::scanner o-right- ClassPathBeanDefinitionScanner
 
-
-Reader o-- BeanDefinitionRegistry
-Reader o-- BeanNameGenerator
-Reader o-- ScopeMetadataResolver
-Reader o-- ConditionEvaluator
-
+note right of AnnotationConfigApplicationContext
+  面向注解驱动配置的 ApplicationContext。
+  常见入口包括 register(...)、scan(...)
+  以及 refresh()。
+end note
 
 
 @enduml
