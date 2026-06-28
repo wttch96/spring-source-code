@@ -8,7 +8,7 @@ import org.springframework.core.ResolvableType;
 import org.springframework.lang.Nullable;
 
 /**
- * {@link BeanFactory} 接口的扩展，由能够枚举其所有 Bean 实例的 Bean 工厂实现，
+ * {@link BeanFactory} 接口的扩展，由能够列举其所有 Bean 实例的 Bean 工厂实现，
  * 而不是按客户端请求逐个按名称尝试查找 Bean。预加载所有 Bean 定义的
  * BeanFactory 实现（例如基于 XML 的工厂）可以实现此接口。
  *
