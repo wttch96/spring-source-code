@@ -1,7 +1,7 @@
 @startuml
 ' https://plantuml.com/sequence-diagram
 
-title AnnotationConfigApplicationContext 调用逻辑图
+title AnnotationConfigApplicationContext 注解容器启动调用逻辑图
 autonumber
 
 actor Client
@@ -9,24 +9,54 @@ participant "AnnotationConfigApplicationContext" as ACC
 participant "AnnotatedBeanDefinitionReader" as Reader
 participant "ClassPathBeanDefinitionScanner" as Scanner
 participant "AnnotationConfigUtils" as Utils
-participant "BeanDefinitionRegistry" as Registry
+participant "DefaultListableBeanFactory\n/ BeanDefinitionRegistry" as Registry
+participant "AbstractApplicationContext" as AAC
+participant "PostProcessorRegistrationDelegate" as Delegate
+participant "ConfigurationClassPostProcessor" as CCPP
+participant "ConfigurationClassParser" as Parser
+participant "ConfigurationClassBeanDefinitionReader" as ConfigReader
+
+== 构造阶段：初始化 Reader / Scanner / 基础注解处理器 ==
+
+Client -> ACC: new AnnotationConfigApplicationContext()
+activate ACC
+ACC -> Reader: new AnnotatedBeanDefinitionReader(this)
+activate Reader
+Reader -> Utils: registerAnnotationConfigProcessors(registry)
+activate Utils
+Utils -> Registry: set DependencyComparator
+Utils -> Registry: set AutowireCandidateResolver
+Utils -> Registry: registerBeanDefinition(\nConfigurationClassPostProcessor)
+Utils -> Registry: registerBeanDefinition(\nAutowiredAnnotationBeanPostProcessor)
+Utils -> Registry: registerBeanDefinition(\nCommonAnnotationBeanPostProcessor?)
+Utils -> Registry: registerBeanDefinition(\nPersistenceAnnotationBeanPostProcessor?)
+Utils -> Registry: registerBeanDefinition(\nEventListenerMethodProcessor)
+Utils -> Registry: registerBeanDefinition(\nDefaultEventListenerFactory)
+deactivate Utils
+deactivate Reader
+ACC -> Scanner: new ClassPathBeanDefinitionScanner(this)
+deactivate ACC
+
+note right of Utils
+这里注册的是 Spring 处理注解所需的基础设施 BeanDefinition。
+最关键的是 ConfigurationClassPostProcessor：
+它会在 refresh() 阶段继续解析 @Configuration、@Bean、@Import、@ComponentScan。
+end note
 
 == 方式一：通过配置类初始化 ==
 
 Client -> ACC: new AnnotationConfigApplicationContext(AppConfig.class)
 activate ACC
 ACC -> ACC: this()
-ACC -> Reader: new AnnotatedBeanDefinitionReader(this)
-activate Reader
-Reader -> Utils: registerAnnotationConfigProcessors(registry)
-Utils -> Registry: register infrastructure beans
-deactivate Reader
-ACC -> Scanner: new ClassPathBeanDefinitionScanner(this)
 ACC -> ACC: register(componentClasses)
 ACC -> Reader: register(componentClasses)
-Reader -> Reader: registerBean(componentClass)
-Reader -> Reader: doRegisterBean(...)
-Reader -> Registry: registerBeanDefinition(...)
+activate Reader
+loop each componentClass
+	Reader -> Reader: registerBean(componentClass)
+	Reader -> Reader: doRegisterBean(...)
+	Reader -> Registry: registerBeanDefinition(beanName, abd)
+end
+deactivate Reader
 ACC -> ACC: refresh()
 deactivate ACC
 
@@ -35,35 +65,125 @@ deactivate ACC
 Client -> ACC: new AnnotationConfigApplicationContext("com.example")
 activate ACC
 ACC -> ACC: this()
-ACC -> Reader: new AnnotatedBeanDefinitionReader(this)
-ACC -> Scanner: new ClassPathBeanDefinitionScanner(this)
 ACC -> ACC: scan(basePackages)
 ACC -> Scanner: scan(basePackages)
+activate Scanner
 Scanner -> Scanner: doScan(basePackages)
-Scanner -> Registry: registerBeanDefinition(...)
-opt includeAnnotationConfig == true
-  Scanner -> Utils: registerAnnotationConfigProcessors(registry)
-  Utils -> Registry: register infrastructure beans
+loop each candidate component
+	Scanner -> Scanner: findCandidateComponents(basePackage)
+	Scanner -> Scanner: postProcessBeanDefinition(...)
+	Scanner -> Scanner: processCommonDefinitionAnnotations(...)
+	Scanner -> Registry: registerBeanDefinition(beanName, bd)
 end
+opt includeAnnotationConfig == true
+	Scanner -> Utils: registerAnnotationConfigProcessors(registry)
+	Utils -> Registry: register infrastructure BeanDefinitions
+end
+deactivate Scanner
 ACC -> ACC: refresh()
 deactivate ACC
 
-== 方式三：无参构造后手动注册 ==
+== 方式三：无参构造后手动注册或扫描 ==
 
 Client -> ACC: new AnnotationConfigApplicationContext()
-activate ACC
-ACC -> Reader: new AnnotatedBeanDefinitionReader(this)
-ACC -> Scanner: new ClassPathBeanDefinitionScanner(this)
-Client -> ACC: register(...)
-ACC -> Reader: register(...)
+Client -> ACC: register(AppConfig.class)
+ACC -> Reader: register(componentClasses)
+Reader -> Registry: registerBeanDefinition(beanName, abd)
+Client -> ACC: scan("com.example")
+ACC -> Scanner: scan(basePackages)
+Scanner -> Registry: registerBeanDefinition(beanName, bd)
 Client -> ACC: refresh()
-deactivate ACC
 
 note over ACC
-核心职责：
-1. 初始化 Reader / Scanner
-2. 注册注解处理器
-3. 支持 register(...) / scan(...)
-4. 通过 refresh() 完成容器启动
+三种入口最终都会走到 refresh()。
+register(...) 只把显式类注册成 BeanDefinition；
+scan(...) 先扫描包路径，把候选组件注册成 BeanDefinition；
+真正解析 @Configuration / @Bean / @Import 等是在 refresh() 中完成。
 end note
+
+== refresh 阶段：触发注解配置类解析 ==
+
+ACC -> AAC: refresh()
+activate AAC
+AAC -> AAC: prepareRefresh()
+AAC -> AAC: obtainFreshBeanFactory()
+AAC -> AAC: prepareBeanFactory(beanFactory)
+AAC -> AAC: postProcessBeanFactory(beanFactory)
+AAC -> Delegate: invokeBeanFactoryPostProcessors(beanFactory, getBeanFactoryPostProcessors())
+activate Delegate
+Delegate -> Registry: getBeanNamesForType(BeanDefinitionRegistryPostProcessor)
+Registry --> Delegate: org.springframework.context.annotation.internalConfigurationAnnotationProcessor
+Delegate -> CCPP: postProcessBeanDefinitionRegistry(registry)
+activate CCPP
+CCPP -> CCPP: processConfigBeanDefinitions(registry)
+
+CCPP -> Parser: new ConfigurationClassParser(...)
+activate Parser
+loop parse candidates until no new config classes
+	CCPP -> Parser: parse(candidates)
+	Parser -> Parser: processConfigurationClass(configClass)
+	Parser -> Parser: doProcessConfigurationClass(...)
+	Parser -> Parser: processMemberClasses(...)
+	Parser -> Parser: processPropertySource(...)
+	Parser -> Parser: processComponentScans(...)
+	Parser -> Parser: processImports(...)
+	Parser -> Parser: retrieveBeanMethodMetadata(@Bean)
+end
+Parser --> CCPP: Set<ConfigurationClass>
+deactivate Parser
+
+CCPP -> ConfigReader: new ConfigurationClassBeanDefinitionReader(...)
+activate ConfigReader
+ConfigReader -> ConfigReader: loadBeanDefinitions(configClasses)
+loop each ConfigurationClass
+	ConfigReader -> Registry: register imported/config class BeanDefinition
+	ConfigReader -> Registry: register @Bean method BeanDefinition
+	ConfigReader -> Registry: register ImportBeanDefinitionRegistrar definitions
+	ConfigReader -> Registry: register imported resources definitions
+end
+deactivate ConfigReader
+CCPP -> Registry: enhance @Configuration classes with CGLIB
+deactivate CCPP
+Delegate -> Delegate: invokeBeanFactoryPostProcessors(...)
+deactivate Delegate
+
+AAC -> Delegate: registerBeanPostProcessors(beanFactory)
+AAC -> AAC: initMessageSource()
+AAC -> AAC: initApplicationEventMulticaster()
+AAC -> AAC: onRefresh()
+AAC -> AAC: registerListeners()
+AAC -> AAC: finishBeanFactoryInitialization(beanFactory)
+AAC -> Registry: preInstantiateSingletons()
+AAC -> AAC: finishRefresh()
+deactivate AAC
+
+note over CCPP, ConfigReader
+ConfigurationClassPostProcessor 是注解启动链路的核心：
+1. 先找出候选配置类
+2. 解析 @ComponentScan、@Import、@ImportResource、@Bean 等元数据
+3. 把解析结果继续注册为 BeanDefinition
+4. 对 full @Configuration 类做 CGLIB 增强，保证 @Bean 方法调用语义
+end note
+
+== 关键角色 ==
+
+note over Reader
+AnnotatedBeanDefinitionReader
+负责显式 register(Class...)：
+把传入 Class 包装为 AnnotatedGenericBeanDefinition 并注册。
+end note
+
+note over Scanner
+ClassPathBeanDefinitionScanner
+负责 scan(String...)：
+按包路径扫描 @Component 派生注解类，
+例如 @Component、@Service、@Repository、@Controller。
+end note
+
+note over Registry
+BeanDefinitionRegistry / DefaultListableBeanFactory
+是 BeanDefinition 的注册中心。
+refresh() 后半段会根据这些 BeanDefinition 创建 Bean 实例。
+end note
+
 @enduml

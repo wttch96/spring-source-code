@@ -1,27 +1,45 @@
 @startuml
-'https://plantuml.com/class-diagram
+top to bottom direction
+skinparam linetype ortho
 
-abstract class AbstractList
-abstract AbstractCollection
-interface List
-interface Collection
 
-List <|-- AbstractList
-Collection <|-- AbstractCollection
+interface AliasRegistry as "AliasRegistry 别名注册接口" << interface >>
+interface SingletonBeanRegistry as "SingletonBeanRegistry 单例注册接口" << interface >>
 
-Collection <|- List
-AbstractCollection <|- AbstractList
-AbstractList <|-- ArrayList
+class SimpleAliasRegistry as "SimpleAliasRegistry 简单别名注册实现类"
 
-class ArrayList {
-Object[] elementData
-size()
-}
 
-enum TimeUnit {
-DAYS
-HOURS
-MINUTES
-}
+class AbstractAutowireCapableBeanFactory
+class AbstractBeanFactory
+interface AutowireCapableBeanFactory << interface >>
+interface BeanDefinitionRegistry << interface >>
+interface BeanFactory << interface >>
+interface ConfigurableBeanFactory << interface >>
+interface ConfigurableListableBeanFactory << interface >>
+class DefaultListableBeanFactory
+class DefaultSingletonBeanRegistry
+class FactoryBeanRegistrySupport
+interface HierarchicalBeanFactory << interface >>
+interface ListableBeanFactory << interface >>
 
+SimpleAliasRegistry                 -[#008200,dashed]-^  AliasRegistry
+AbstractAutowireCapableBeanFactory  -[#000082,plain]-^  AbstractBeanFactory
+AbstractAutowireCapableBeanFactory  -[#008200,dashed]-^  AutowireCapableBeanFactory
+AbstractBeanFactory                 -[#008200,dashed]-^  ConfigurableBeanFactory
+AbstractBeanFactory                 -[#000082,plain]-^  FactoryBeanRegistrySupport
+AutowireCapableBeanFactory          -[#008200,plain]-^  BeanFactory
+BeanDefinitionRegistry              -[#008200,plain]-^  AliasRegistry
+ConfigurableBeanFactory             -[#008200,plain]-^  HierarchicalBeanFactory
+ConfigurableBeanFactory             -[#008200,plain]-^  SingletonBeanRegistry
+ConfigurableListableBeanFactory     -[#008200,plain]-^  AutowireCapableBeanFactory
+ConfigurableListableBeanFactory     -[#008200,plain]-^  ConfigurableBeanFactory
+ConfigurableListableBeanFactory     -[#008200,plain]-^  ListableBeanFactory
+DefaultListableBeanFactory          -[#000082,plain]-^  AbstractAutowireCapableBeanFactory
+DefaultListableBeanFactory          -[#008200,dashed]-^  BeanDefinitionRegistry
+DefaultListableBeanFactory          -[#008200,dashed]-^  ConfigurableListableBeanFactory
+DefaultSingletonBeanRegistry        -[#000082,plain]-^  SimpleAliasRegistry
+DefaultSingletonBeanRegistry        -[#008200,dashed]-^  SingletonBeanRegistry
+FactoryBeanRegistrySupport          -[#000082,plain]-^  DefaultSingletonBeanRegistry
+HierarchicalBeanFactory             -[#008200,plain]-^  BeanFactory
+ListableBeanFactory                 -[#008200,plain]-^  BeanFactory
 @enduml
